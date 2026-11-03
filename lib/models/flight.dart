@@ -67,7 +67,7 @@ class Flight {
       stopsInfo: '1 stop in FRA',
       cabinClass: 'Business class',
       date: 'Sep 21, 2024',
-      price: 605,
+      price: 560,
       gate: 'B22',
       seat: '04A',
       flightNumber: 'AA-2849',
@@ -147,5 +147,43 @@ class Flight {
       logoType: 'emirates',
     ),
   ];
+
+  static List<Flight> getFlightsForRoute({
+    required String fromCode,
+    required String fromCity,
+    required String toCode,
+    required String toCity,
+  }) {
+    if (fromCode == 'JFK' && toCode == 'ZHR') {
+      return sampleFlights;
+    }
+    return sampleFlights.map((f) {
+      return Flight(
+        id: '${f.id}-$fromCode-$toCode',
+        airlineName: f.airlineName,
+        airlineCode: f.airlineCode,
+        aircraft: f.aircraft,
+        fromCode: fromCode,
+        fromCity: fromCity,
+        fromTime: f.fromTime,
+        fromTerminal: f.fromTerminal,
+        toCode: toCode,
+        toCity: toCity,
+        toTime: f.toTime,
+        toTerminal: f.toTerminal,
+        duration: f.duration,
+        stopsInfo: f.stopsInfo,
+        cabinClass: f.cabinClass,
+        date: f.date,
+        price: f.price,
+        gate: f.gate,
+        seat: f.seat,
+        flightNumber: f.flightNumber,
+        boardingTime: f.boardingTime,
+        passengerName: f.passengerName,
+        logoType: f.logoType,
+      );
+    }).toList();
+  }
 }
 

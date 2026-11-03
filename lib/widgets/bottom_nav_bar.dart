@@ -88,8 +88,8 @@ class FlightBottomNavBar extends StatelessWidget {
                 color: AppColors.primaryRed,
                 shadows: [
                   BoxShadow(
-                    color: AppColors.primaryRed.withValues(alpha: 0.4),
-                    blurRadius: 10,
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
                 ],
@@ -97,6 +97,10 @@ class FlightBottomNavBar extends StatelessWidget {
                   borderRadius: SmoothBorderRadius(
                     cornerRadius: 16,
                     cornerSmoothing: 0.6,
+                  ),
+                  side: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    width: 1.0,
                   ),
                 ),
               )

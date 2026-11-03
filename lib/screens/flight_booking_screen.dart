@@ -3,59 +3,89 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/flight.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/date_selector.dart';
 import '../widgets/filter_chips_row.dart';
 import '../widgets/flight_arc_painter.dart';
-import '../widgets/flight_details_sheet.dart';
 import '../widgets/ticket_card.dart';
+import 'boarding_pass_screen.dart';
+import 'main_navigation_screen.dart';
+import 'onboarding_screen.dart';
+import 'seat_selection_screen.dart';
 
 class FlightBookingScreen extends StatefulWidget {
-  const FlightBookingScreen({super.key});
+  final String fromCode;
+  final String fromCity;
+  final String toCode;
+  final String toCity;
+  final bool isRoundTrip;
+
+  const FlightBookingScreen({
+    super.key,
+    this.fromCode = 'JFK',
+    this.fromCity = 'New york',
+    this.toCode = 'ZHR',
+    this.toCity = 'Zurich',
+    this.isRoundTrip = true,
+  });
 
   @override
   State<FlightBookingScreen> createState() => _FlightBookingScreenState();
 }
 
 class _FlightBookingScreenState extends State<FlightBookingScreen> {
-  bool isRoundTrip = true;
+  late bool isRoundTrip;
   int selectedDay = 21;
   String selectedFilter = 'Best deal';
   int currentNavIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    isRoundTrip = widget.isRoundTrip;
+  }
+
+  List<Flight> get _baseFlights => Flight.getFlightsForRoute(
+        fromCode: widget.fromCode,
+        fromCity: widget.fromCity,
+        toCode: widget.toCode,
+        toCity: widget.toCity,
+      );
+
   List<Flight> get filteredFlights {
     switch (selectedFilter) {
       case 'Cheapest':
-        final list = List<Flight>.from(Flight.sampleFlights);
+        final list = List<Flight>.from(_baseFlights);
         list.sort((a, b) => a.price.compareTo(b.price));
         return list;
       case 'Fastest':
         return [
-          Flight.sampleFlights[1],
-          Flight.sampleFlights[0],
-          Flight.sampleFlights[2],
-          Flight.sampleFlights[3],
+          _baseFlights[1],
+          _baseFlights[0],
+          _baseFlights[2],
+          _baseFlights[3],
         ];
       case 'Best price':
         return [
-          Flight.sampleFlights[0],
-          Flight.sampleFlights[1],
-          Flight.sampleFlights[2],
-          Flight.sampleFlights[3],
+          _baseFlights[0],
+          _baseFlights[1],
+          _baseFlights[2],
+          _baseFlights[3],
         ];
       case 'Recommended':
       case 'Best deal':
       default:
-        return Flight.sampleFlights;
+        return _baseFlights;
     }
   }
 
-  void _openFlightDetails(Flight flight) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => FlightDetailsSheet(flight: flight),
+  void _openSeatSelection(Flight flight) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SeatSelectionScreen(flight: flight),
+      ),
     );
   }
 
@@ -153,7 +183,7 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                       final flight = filteredFlights[index];
                       return TicketCard(
                         flight: flight,
-                        onTap: () => _openFlightDetails(flight),
+                        onTap: () => _openSeatSelection(flight),
                       );
                     },
                     childCount: filteredFlights.length,
@@ -176,9 +206,26 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
             child: FlightBottomNavBar(
               currentIndex: currentNavIndex,
               onTabSelected: (index) {
-                setState(() {
-                  currentNavIndex = index;
-                });
+                if (index == 0) {
+                  Navigator.maybePop(context);
+                  return;
+                }
+                if (index == 2) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BoardingPassScreen(),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        MainNavigationScreen(initialIndex: index),
+                  ),
+                );
               },
             ),
           ),
@@ -192,41 +239,17 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Back Button
-        GestureDetector(
-          onTap: () {},
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: ShapeDecoration(
-              color: const Color(0xFF141214),
-              shape: SmoothRectangleBorder(
-                borderRadius: SmoothBorderRadius(
-                  cornerRadius: 15,
-                  cornerSmoothing: 0.6,
-                ),
-                side: const BorderSide(
-                  color: Color(0xFF331417),
-                  width: 1.0,
-                ),
-              ),
-            ),
-            child: const Icon(
-              Icons.chevron_left_rounded,
-              color: Colors.white,
-              size: 26,
-            ),
-          ),
-        ),
+        const AppBackButton(),
 
         // Trip Type Toggle (One way / Round trip)
         Container(
-          height: 42,
-          padding: const EdgeInsets.all(3.5),
+          height: 38,
+          padding: const EdgeInsets.all(2.5),
           decoration: ShapeDecoration(
             color: const Color(0xFF131114),
             shape: SmoothRectangleBorder(
               borderRadius: SmoothBorderRadius(
-                cornerRadius: 21,
+                cornerRadius: 19,
                 cornerSmoothing: 0.6,
               ),
               side: const BorderSide(
@@ -236,6 +259,7 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
             ),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               // One way
               GestureDetector(
@@ -247,22 +271,25 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: !isRoundTrip
                       ? ShapeDecoration(
                           color: AppColors.primaryRed,
                           shadows: [
                             BoxShadow(
-                              color:
-                                  AppColors.primaryRed.withValues(alpha: 0.35),
-                              blurRadius: 8,
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ],
                           shape: SmoothRectangleBorder(
                             borderRadius: SmoothBorderRadius(
-                              cornerRadius: 18,
+                              cornerRadius: 15,
                               cornerSmoothing: 0.6,
+                            ),
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              width: 1.0,
                             ),
                           ),
                         )
@@ -270,7 +297,7 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                   child: Text(
                     'One way',
                     style: GoogleFonts.outfit(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight:
                           !isRoundTrip ? FontWeight.w700 : FontWeight.w500,
                       color: !isRoundTrip
@@ -291,22 +318,25 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: isRoundTrip
                       ? ShapeDecoration(
                           color: AppColors.primaryRed,
                           shadows: [
                             BoxShadow(
-                              color:
-                                  AppColors.primaryRed.withValues(alpha: 0.35),
-                              blurRadius: 8,
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ],
                           shape: SmoothRectangleBorder(
                             borderRadius: SmoothBorderRadius(
-                              cornerRadius: 18,
+                              cornerRadius: 15,
                               cornerSmoothing: 0.6,
+                            ),
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              width: 1.0,
                             ),
                           ),
                         )
@@ -314,7 +344,7 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                   child: Text(
                     'Round trip',
                     style: GoogleFonts.outfit(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight:
                           isRoundTrip ? FontWeight.w700 : FontWeight.w500,
                       color: isRoundTrip
@@ -328,67 +358,17 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
           ),
         ),
 
-        // Profile Avatar with Notification Accent
-        Stack(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: ShapeDecoration(
-                color: const Color(0xFF1E1C24),
-                shape: SmoothRectangleBorder(
-                  borderRadius: SmoothBorderRadius(
-                    cornerRadius: 15,
-                    cornerSmoothing: 0.6,
-                  ),
-                  side: const BorderSide(
-                    color: Color(0xFF331417),
-                    width: 1.0,
-                  ),
-                ),
+        // Profile Avatar with Notification Accent (taps to revisit Onboarding)
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const OnboardingScreen(),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFE5A988),
-                        Color(0xFFB56A49),
-                        Color(0xFF4A2B20),
-                      ],
-                    ),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.person_rounded,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // Tiny vibrant red notification badge
-            Positioned(
-              top: 1,
-              right: 1,
-              child: Container(
-                width: 9,
-                height: 9,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryRed,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.background,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-          ],
+            );
+          },
+          child: const AppProfileAvatar(),
         ),
       ],
     );
@@ -414,14 +394,14 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Left: Origin JFK
+            // Left: Origin
             SizedBox(
               width: 80,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'JFK',
+                    widget.fromCode,
                     style: GoogleFonts.outfit(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
@@ -430,12 +410,14 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                     ),
                   ),
                   Text(
-                    'New york',
+                    widget.fromCity,
                     style: GoogleFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF8E8E93),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -468,14 +450,14 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
               ),
             ),
 
-            // Right: Destination ZHR
+            // Right: Destination
             SizedBox(
               width: 80,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'ZHR',
+                    widget.toCode,
                     style: GoogleFonts.outfit(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
@@ -484,12 +466,14 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                     ),
                   ),
                   Text(
-                    'Zurich',
+                    widget.toCity,
                     style: GoogleFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF8E8E93),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

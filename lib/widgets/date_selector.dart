@@ -61,9 +61,9 @@ class DateSelectorStrip extends StatelessWidget {
                 shadows: isSelected
                     ? [
                         BoxShadow(
-                          color: AppColors.primaryRed.withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ]
                     : null,
@@ -73,7 +73,10 @@ class DateSelectorStrip extends StatelessWidget {
                     cornerSmoothing: 0.6,
                   ),
                   side: isSelected
-                      ? BorderSide.none
+                      ? BorderSide(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          width: 1.0,
+                        )
                       : const BorderSide(
                           color: Color(0xFF2E191C),
                           width: 1.0,

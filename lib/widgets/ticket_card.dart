@@ -8,12 +8,14 @@ import 'flight_arc_painter.dart';
 
 class TicketCard extends StatelessWidget {
   final Flight flight;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final String unitText;
 
   const TicketCard({
     super.key,
     required this.flight,
-    required this.onTap,
+    this.onTap,
+    this.unitText = '/person',
   });
 
   @override
@@ -21,10 +23,8 @@ class TicketCard extends StatelessWidget {
     const double notchY = 170.0;
     const double notchRadius = 11.0;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+    final card = Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: ShapeDecoration(
           shadows: [
             BoxShadow(
@@ -67,16 +67,19 @@ class TicketCard extends StatelessWidget {
                                 size: 26,
                               ),
                               const SizedBox(width: 10),
-                              Text(
-                                flight.airlineName,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textDark,
-                                  letterSpacing: -0.2,
+                              Expanded(
+                                child: Text(
+                                  flight.airlineName,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textDark,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const Spacer(),
+                              const SizedBox(width: 8),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
@@ -196,7 +199,7 @@ class TicketCard extends StatelessWidget {
                           Container(
                             height: 32,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 3),
+                                horizontal: 8, vertical: 3),
                             decoration: ShapeDecoration(
                               color: AppColors.cardTrackGray,
                               shape: SmoothRectangleBorder(
@@ -209,12 +212,15 @@ class TicketCard extends StatelessWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  flight.fromTime,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF636366),
+                                Flexible(
+                                  child: Text(
+                                    flight.fromTime,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF636366),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 Container(
@@ -239,12 +245,16 @@ class TicketCard extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                Text(
-                                  flight.toTime,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF636366),
+                                Flexible(
+                                  child: Text(
+                                    flight.toTime,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF636366),
+                                    ),
+                                    textAlign: TextAlign.end,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -263,51 +273,62 @@ class TicketCard extends StatelessWidget {
                       child: Row(
                         children: [
                           // Cabin class and date
-                          Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: ShapeDecoration(
-                              color: AppColors.primaryRed.withValues(alpha: 0.12),
-                              shape: SmoothRectangleBorder(
-                                borderRadius: SmoothBorderRadius(
-                                  cornerRadius: 8,
-                                  cornerSmoothing: 0.6,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(5),
+                                  decoration: ShapeDecoration(
+                                    color: AppColors.primaryRed.withValues(alpha: 0.12),
+                                    shape: SmoothRectangleBorder(
+                                      borderRadius: SmoothBorderRadius(
+                                        cornerRadius: 8,
+                                        cornerSmoothing: 0.6,
+                                      ),
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.airline_seat_recline_extra_rounded,
+                                    size: 15,
+                                    color: AppColors.primaryRed,
+                                  ),
                                 ),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.airline_seat_recline_extra_rounded,
-                              size: 15,
-                              color: AppColors.primaryRed,
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    flight.cabinClass,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textDark,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                                  child: Text(
+                                    '•',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade400,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Text(
+                                    flight.date,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textDarkSecondary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            flight.cabinClass,
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textDark,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            child: Text(
-                              '•',
-                              style: TextStyle(
-                                color: Colors.grey.shade400,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            flight.date,
-                            style: GoogleFonts.outfit(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textDarkSecondary,
-                            ),
-                          ),
-                          const Spacer(),
 
                           // Price
                           Row(
@@ -324,7 +345,7 @@ class TicketCard extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '/person',
+                                unitText,
                                 style: GoogleFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w400,
@@ -356,8 +377,15 @@ class TicketCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
+
+    if (onTap != null) {
+      return GestureDetector(
+        onTap: onTap,
+        child: card,
+      );
+    }
+    return card;
   }
 }
 

@@ -65,8 +65,8 @@ class FilterChipsRow extends StatelessWidget {
                     shadows: isSelected
                         ? [
                             BoxShadow(
-                              color: AppColors.primaryRed.withValues(alpha: 0.3),
-                              blurRadius: 8,
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ]
@@ -77,7 +77,10 @@ class FilterChipsRow extends StatelessWidget {
                         cornerSmoothing: 0.6,
                       ),
                       side: isSelected
-                          ? BorderSide.none
+                          ? BorderSide(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              width: 1.0,
+                            )
                           : const BorderSide(
                               color: Color(0xFF28282D),
                               width: 1.0,
