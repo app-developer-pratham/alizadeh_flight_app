@@ -68,12 +68,16 @@ class SeatWidget extends StatelessWidget {
     return GestureDetector(
       onTap: isUnavailable ? null : onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        width: size,
-        height: size,
-        decoration: ShapeDecoration(
+      child: AnimatedScale(
+        scale: isSelected ? 1.05 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          width: size,
+          height: size,
+          decoration: ShapeDecoration(
           color: isSelected
               ? AppColors.primaryRed
               : isUnavailable
@@ -131,6 +135,7 @@ class SeatWidget extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

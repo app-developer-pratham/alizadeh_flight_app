@@ -16,10 +16,32 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final PageController _pageController;
   late final AnimationController _animController;
+  late final AnimationController _introController;
+  late final AnimationController _departureController;
+
+  // Staggered Entrance Animations
+  late final Animation<Offset> _headerSlide;
+  late final Animation<double> _headerFade;
+  late final Animation<double> _radarScale;
+  late final Animation<double> _radarFade;
+  late final Animation<Offset> _planeEntranceOffset;
+  late final Animation<double> _planeEntranceScale;
+  late final Animation<double> _badge1Scale;
+  late final Animation<double> _badge2Scale;
+  late final Animation<Offset> _contentSlide;
+  late final Animation<double> _contentFade;
+  late final Animation<Offset> _bottomSlide;
+  late final Animation<double> _bottomFade;
+
+  // Takeoff Departure Animations
+  late final Animation<Offset> _departureOffset;
+  late final Animation<double> _departureFade;
+
   int _currentPage = 0;
+  bool _isDeparting = false;
 
   final List<OnboardingSlideData> _slides = const [
     OnboardingSlideData(
@@ -52,16 +74,132 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   void initState() {
     super.initState();
     _pageController = PageController();
+
+    // Subtle ambient floating loop for airplane and radar
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
+
+    // Choreographed entrance animation on screen launch
+    _introController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+
+    _headerSlide = Tween<Offset>(
+      begin: const Offset(0, -0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _introController,
+      curve: const Interval(0.0, 0.45, curve: Curves.easeOutCubic),
+    ));
+
+    _headerFade = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+      parent: _introController,
+      curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+    ));
+
+    _radarScale = Tween<double>(begin: 0.5, end: 1.0).animate(CurvedAnimation(
+      parent: _introController,
+      curve: const Interval(0.1, 0.65, curve: Curves.easeOutBack),
+    ));
+
+    _radarFade = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+      parent: _introController,
+      curve: const Interval(0.05, 0.5, curve: Curves.easeOut),
+    ));
+
+    _planeEntranceOffset = Tween<Offset>(
+      begin: const Offset(-80.0, 60.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _introController,
+      curve: const Interval(0.15, 0.8, curve: Curves.easeOutCubic),
+    ));
+
+    _planeEntranceScale = Tween<double>(begin: 0.65, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.15, 0.8, curve: Curves.easeOutBack),
+      ),
+    );
+
+    _badge1Scale = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.45, 0.85, curve: Curves.easeOutBack),
+      ),
+    );
+
+    _badge2Scale = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.60, 0.95, curve: Curves.easeOutBack),
+      ),
+    );
+
+    _contentSlide = Tween<Offset>(
+      begin: const Offset(0, 0.25),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _introController,
+      curve: const Interval(0.35, 0.85, curve: Curves.easeOutCubic),
+    ));
+
+    _contentFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.35, 0.85, curve: Curves.easeOut),
+      ),
+    );
+
+    _bottomSlide = Tween<Offset>(
+      begin: const Offset(0, 0.35),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _introController,
+      curve: const Interval(0.55, 1.0, curve: Curves.easeOutCubic),
+    ));
+
+    _bottomFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.55, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    // Takeoff Departure Controller
+    _departureController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+
+    _departureOffset = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(280.0, -280.0),
+    ).animate(CurvedAnimation(
+      parent: _departureController,
+      curve: Curves.easeInCubic,
+    ));
+
+    _departureFade = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _departureController,
+        curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    // Start entrance animation
+    _introController.forward();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     _animController.dispose();
+    _introController.dispose();
+    _departureController.dispose();
     super.dispose();
   }
 
@@ -75,18 +213,34 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     if (_currentPage < _slides.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 320),
-        curve: Curves.easeInOut,
+        curve: Curves.easeInOutCubic,
       );
     } else {
-      _navigateToBooking();
+      _triggerTakeoffAndNavigate();
     }
   }
 
+  void _triggerTakeoffAndNavigate() {
+    if (_isDeparting) return;
+    setState(() {
+      _isDeparting = true;
+    });
+    _departureController.forward().then((_) {
+      _navigateToBooking();
+    });
+  }
+
   void _navigateToBooking() {
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => const MainNavigationScreen(),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const MainNavigationScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 320),
       ),
     );
   }
@@ -136,84 +290,90 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child: Column(
               children: [
                 // Top Header Row: Brand & Skip Button
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // App Brand Mark
-                      Row(
+                SlideTransition(
+                  position: _headerSlide,
+                  child: FadeTransition(
+                    opacity: _headerFade,
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: ShapeDecoration(
-                              color: AppColors.primaryRed,
-                              shape: SmoothRectangleBorder(
-                                borderRadius: SmoothBorderRadius(
-                                  cornerRadius: 11,
-                                  cornerSmoothing: 0.6,
+                          // App Brand Mark
+                          Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: ShapeDecoration(
+                                  color: AppColors.primaryRed,
+                                  shape: SmoothRectangleBorder(
+                                    borderRadius: SmoothBorderRadius(
+                                      cornerRadius: 11,
+                                      cornerSmoothing: 0.6,
+                                    ),
+                                  ),
+                                  shadows: [
+                                    BoxShadow(
+                                      color: AppColors.primaryRed
+                                          .withValues(alpha: 0.4),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.flight_takeoff_rounded,
+                                  color: Colors.white,
+                                  size: 20,
                                 ),
                               ),
-                              shadows: [
-                                BoxShadow(
-                                  color: AppColors.primaryRed
-                                      .withValues(alpha: 0.4),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
+                              const SizedBox(width: 10),
+                              Text(
+                                'AERO',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 1.5,
                                 ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.flight_takeoff_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'AERO',
-                            style: GoogleFonts.outfit(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: 1.5,
+
+                          // Skip Button
+                          GestureDetector(
+                            onTap: _navigateToBooking,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 7),
+                              decoration: ShapeDecoration(
+                                color: AppColors.surfaceDark,
+                                shape: SmoothRectangleBorder(
+                                  borderRadius: SmoothBorderRadius(
+                                    cornerRadius: 12,
+                                    cornerSmoothing: 0.6,
+                                  ),
+                                  side: const BorderSide(
+                                    color: AppColors.surfaceDarkBorder,
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                'Skip',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white70,
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
-
-                      // Skip Button
-                      GestureDetector(
-                        onTap: _navigateToBooking,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 7),
-                          decoration: ShapeDecoration(
-                            color: AppColors.surfaceDark,
-                            shape: SmoothRectangleBorder(
-                              borderRadius: SmoothBorderRadius(
-                                cornerRadius: 12,
-                                cornerSmoothing: 0.6,
-                              ),
-                              side: const BorderSide(
-                                color: AppColors.surfaceDarkBorder,
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            'Skip',
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
 
@@ -221,11 +381,26 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 Expanded(
                   flex: 6,
                   child: AnimatedBuilder(
-                    animation: _animController,
+                    animation: Listenable.merge([
+                      _animController,
+                      _introController,
+                      _departureController,
+                    ]),
                     builder: (context, child) {
                       final floatOffset =
                           math.sin(_animController.value * 2 * math.pi) * 8.0;
                       final currentSlide = _slides[_currentPage];
+
+                      // Dynamic aerodynamic tilt depending on slide index
+                      final bankAngle = (_currentPage - 1) * -0.05;
+
+                      final totalDx = _planeEntranceOffset.value.dx +
+                          _departureOffset.value.dx;
+                      final totalDy = floatOffset +
+                          _planeEntranceOffset.value.dy +
+                          _departureOffset.value.dy;
+                      final totalScale = _planeEntranceScale.value *
+                          (1.0 + _departureController.value * 0.4);
 
                       return Center(
                         child: SizedBox(
@@ -234,20 +409,37 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             alignment: Alignment.center,
                             children: [
                               // Orbital Radar / Flight rings in background
-                              CustomPaint(
-                                painter: _OrbitalRadarPainter(
-                                    pulse: _animController.value),
-                                size: const Size(320, 320),
+                              Transform.scale(
+                                scale: _radarScale.value,
+                                child: Opacity(
+                                  opacity: _radarFade.value *
+                                      (1.0 - _departureController.value),
+                                  child: CustomPaint(
+                                    painter: _OrbitalRadarPainter(
+                                        pulse: _animController.value),
+                                    size: const Size(320, 320),
+                                  ),
+                                ),
                               ),
 
-                              // Stylized Aircraft Illustration
+                              // Stylized Aircraft Illustration with Entrance & Takeoff Physics
                               Transform.translate(
-                                offset: Offset(0, floatOffset),
-                                child: SizedBox(
-                                  width: 280,
-                                  height: 240,
-                                  child: CustomPaint(
-                                    painter: _AirplaneHeroPainter(),
+                                offset: Offset(totalDx, totalDy),
+                                child: Transform.scale(
+                                  scale: totalScale,
+                                  child: Transform.rotate(
+                                    angle: bankAngle -
+                                        (_departureController.value * 0.2),
+                                    child: Opacity(
+                                      opacity: _departureFade.value,
+                                      child: SizedBox(
+                                        width: 280,
+                                        height: 240,
+                                        child: CustomPaint(
+                                          painter: _AirplaneHeroPainter(),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -256,10 +448,34 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               Positioned(
                                 top: 40 + floatOffset * 0.5,
                                 left: 28,
-                                child: _floatingBadge(
-                                  icon: Icons.flight_takeoff_rounded,
-                                  text: currentSlide.accentBadge,
-                                  isAccent: true,
+                                child: Transform.scale(
+                                  scale: _badge1Scale.value,
+                                  alignment: Alignment.centerLeft,
+                                  child: Opacity(
+                                    opacity: _departureFade.value,
+                                    child: AnimatedSwitcher(
+                                      duration:
+                                          const Duration(milliseconds: 260),
+                                      transitionBuilder: (child, anim) =>
+                                          FadeTransition(
+                                        opacity: anim,
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.0, 0.2),
+                                            end: Offset.zero,
+                                          ).animate(anim),
+                                          child: child,
+                                        ),
+                                      ),
+                                      child: _floatingBadge(
+                                        key: ValueKey(
+                                            'badge1_${currentSlide.accentBadge}'),
+                                        icon: Icons.flight_takeoff_rounded,
+                                        text: currentSlide.accentBadge,
+                                        isAccent: true,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
 
@@ -267,10 +483,35 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               Positioned(
                                 bottom: 35 - floatOffset * 0.5,
                                 right: 28,
-                                child: _floatingBadge(
-                                  icon: Icons.airline_seat_recline_extra_rounded,
-                                  text: currentSlide.subBadge,
-                                  isAccent: false,
+                                child: Transform.scale(
+                                  scale: _badge2Scale.value,
+                                  alignment: Alignment.centerRight,
+                                  child: Opacity(
+                                    opacity: _departureFade.value,
+                                    child: AnimatedSwitcher(
+                                      duration:
+                                          const Duration(milliseconds: 260),
+                                      transitionBuilder: (child, anim) =>
+                                          FadeTransition(
+                                        opacity: anim,
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.0, -0.2),
+                                            end: Offset.zero,
+                                          ).animate(anim),
+                                          child: child,
+                                        ),
+                                      ),
+                                      child: _floatingBadge(
+                                        key: ValueKey(
+                                            'badge2_${currentSlide.subBadge}'),
+                                        icon: Icons
+                                            .airline_seat_recline_extra_rounded,
+                                        text: currentSlide.subBadge,
+                                        isAccent: false,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -281,89 +522,103 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ),
                 ),
 
-                // Content Slider (Title & Subtitle)
+                // Content Slider (Title & Subtitle) with Staggered Entrance
                 Expanded(
                   flex: 4,
-                  child: PageView.builder(
-                    controller: _pageController,
-                    onPageChanged: _onPageChanged,
-                    itemCount: _slides.length,
-                    itemBuilder: (context, index) {
-                      final slide = _slides[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Tag
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: ShapeDecoration(
-                                color: AppColors.primaryRed
-                                    .withValues(alpha: 0.15),
-                                shape: SmoothRectangleBorder(
-                                  borderRadius: SmoothBorderRadius(
-                                    cornerRadius: 8,
-                                    cornerSmoothing: 0.6,
+                  child: SlideTransition(
+                    position: _contentSlide,
+                    child: FadeTransition(
+                      opacity: _contentFade,
+                      child: PageView.builder(
+                        controller: _pageController,
+                        onPageChanged: _onPageChanged,
+                        itemCount: _slides.length,
+                        itemBuilder: (context, index) {
+                          final slide = _slides[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 28),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Tag
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  decoration: ShapeDecoration(
+                                    color: AppColors.primaryRed
+                                        .withValues(alpha: 0.15),
+                                    shape: SmoothRectangleBorder(
+                                      borderRadius: SmoothBorderRadius(
+                                        cornerRadius: 8,
+                                        cornerSmoothing: 0.6,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    slide.tag,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1.2,
+                                      color: AppColors.primaryRed,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              child: Text(
-                                slide.tag,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.2,
-                                  color: AppColors.primaryRed,
+                                const SizedBox(height: 12),
+
+                                // Heading
+                                Text(
+                                  slide.title,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.15,
+                                    color: Colors.white,
+                                    letterSpacing: -0.5,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
+                                const SizedBox(height: 12),
 
-                            // Heading
-                            Text(
-                              slide.title,
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.outfit(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                height: 1.15,
-                                color: Colors.white,
-                                letterSpacing: -0.5,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                                // Subtitle
+                                Text(
+                                  slide.subtitle,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w400,
+                                    height: 1.45,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 12),
-
-                            // Subtitle
-                            Text(
-                              slide.subtitle,
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.outfit(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w400,
-                                height: 1.45,
-                                color: AppColors.textMuted,
-                              ),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
 
-                // Smooth Animated Page Indicator
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_slides.length, (index) {
+                // Smooth Animated Page Indicator & Bottom Action Buttons
+                SlideTransition(
+                  position: _bottomSlide,
+                  child: FadeTransition(
+                    opacity: _bottomFade,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Smooth Animated Page Indicator
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(_slides.length, (index) {
                       final isSelected = _currentPage == index;
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 280),
@@ -465,6 +720,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ],
                   ),
                 ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -474,11 +733,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _floatingBadge({
+    Key? key,
     required IconData icon,
     required String text,
     required bool isAccent,
   }) {
     return Container(
+      key: key,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: ShapeDecoration(
         color: const Color(0xFF16161B).withValues(alpha: 0.85),

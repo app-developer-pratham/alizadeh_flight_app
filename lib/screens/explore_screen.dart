@@ -16,6 +16,7 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   String _selectedCategory = 'Featured';
+  bool _isLoadingCategory = false;
   final List<String> _categories = const [
     'Featured',
     'Europe',
@@ -23,6 +24,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
     'Americas',
     'Middle East'
   ];
+
+  void _onCategoryTap(String cat) {
+    if (_selectedCategory == cat) return;
+    setState(() {
+      _selectedCategory = cat;
+      _isLoadingCategory = true;
+    });
+    Future.delayed(const Duration(milliseconds: 280), () {
+      if (mounted) {
+        setState(() {
+          _isLoadingCategory = false;
+        });
+      }
+    });
+  }
 
   final List<Map<String, dynamic>> _exploreItems = const [
     {
@@ -193,7 +209,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         final isSelected = cat == _selectedCategory;
 
                         return BounceTap(
-                          onTap: () => setState(() => _selectedCategory = cat),
+                          onTap: () => _onCategoryTap(cat),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(
@@ -236,25 +252,123 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                // Explore Cards List
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final item = _exploreItems[index];
-                        return _buildExploreCard(item);
-                      },
-                      childCount: _exploreItems.length,
+                // Explore Cards List with Interactive Loading State
+                if (_isLoadingCategory) ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _buildExploreSkeleton(),
+                        childCount: 2,
+                      ),
                     ),
                   ),
-                ),
+                ] else ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final item = _exploreItems[index];
+                          return _buildExploreCard(item);
+                        },
+                        childCount: _exploreItems.length,
+                      ),
+                    ),
+                  ),
+                ],
 
                 const SliverToBoxAdapter(child: SizedBox(height: 110)),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildExploreSkeleton() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        height: 175,
+        padding: const EdgeInsets.all(18),
+        decoration: ShapeDecoration(
+          color: const Color(0xFF141318),
+          shape: SmoothRectangleBorder(
+            borderRadius: SmoothBorderRadius(
+              cornerRadius: 22,
+              cornerSmoothing: 0.6,
+            ),
+            side: const BorderSide(color: Color(0xFF282732), width: 1.0),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 80,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                Container(
+                  width: 70,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: 160,
+              height: 18,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: 240,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 100,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                Container(
+                  width: 90,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -360,7 +474,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           );
         },
-        child: Container(
+        child: Hero(
+          tag: 'explore_dest_${item['code']}',
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
           padding: const EdgeInsets.all(18),
           decoration: ShapeDecoration(
             color: const Color(0xFF141318),
@@ -565,6 +683,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ],
           ),
         ),
+      ),
+    ),
       ),
     );
   }

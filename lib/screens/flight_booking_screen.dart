@@ -39,11 +39,42 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
   int selectedDay = 21;
   String selectedFilter = 'Best deal';
   int currentNavIndex = 0;
+  bool _isLoadingFlights = false;
 
   @override
   void initState() {
     super.initState();
     isRoundTrip = widget.isRoundTrip;
+  }
+
+  void _onDateSelected(int day) {
+    if (selectedDay == day) return;
+    setState(() {
+      selectedDay = day;
+      _isLoadingFlights = true;
+    });
+    Future.delayed(const Duration(milliseconds: 380), () {
+      if (mounted) {
+        setState(() {
+          _isLoadingFlights = false;
+        });
+      }
+    });
+  }
+
+  void _onFilterSelected(String filter) {
+    if (selectedFilter == filter) return;
+    setState(() {
+      selectedFilter = filter;
+      _isLoadingFlights = true;
+    });
+    Future.delayed(const Duration(milliseconds: 320), () {
+      if (mounted) {
+        setState(() {
+          _isLoadingFlights = false;
+        });
+      }
+    });
   }
 
   List<Flight> get _baseFlights => Flight.getFlightsForRoute(
@@ -83,8 +114,17 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
   void _openSeatSelection(Flight flight) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => SeatSelectionScreen(flight: flight),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            SeatSelectionScreen(flight: flight),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const curve = Curves.easeOutCubic;
+          final fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: curve),
+          );
+          return FadeTransition(opacity: fadeAnim, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 350),
       ),
     );
   }
@@ -147,11 +187,7 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                 SliverToBoxAdapter(
                   child: DateSelectorStrip(
                     selectedDay: selectedDay,
-                    onDaySelected: (day) {
-                      setState(() {
-                        selectedDay = day;
-                      });
-                    },
+                    onDaySelected: _onDateSelected,
                   ),
                 ),
 
@@ -164,11 +200,7 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                   child: FilterChipsRow(
                     activeFlightsCount: 12,
                     selectedFilter: selectedFilter,
-                    onFilterSelected: (filter) {
-                      setState(() {
-                        selectedFilter = filter;
-                      });
-                    },
+                    onFilterSelected: _onFilterSelected,
                   ),
                 ),
 
@@ -176,19 +208,37 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
                   child: SizedBox(height: 16),
                 ),
 
-                // Flight Ticket Cards List
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final flight = filteredFlights[index];
-                      return TicketCard(
-                        flight: flight,
-                        onTap: () => _openSeatSelection(flight),
-                      );
-                    },
-                    childCount: filteredFlights.length,
+                // Live inventory loading indicator or Flight Ticket Cards List
+                if (_isLoadingFlights) ...[
+                  SliverToBoxAdapter(
+                    child: _buildScanningBanner(),
                   ),
-                ),
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _buildSkeletonTicketCard(),
+                      childCount: 2,
+                    ),
+                  ),
+                ] else ...[
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final flight = filteredFlights[index];
+                        return Hero(
+                          tag: 'flight_ticket_${flight.id}',
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: TicketCard(
+                              flight: flight,
+                              onTap: () => _openSeatSelection(flight),
+                            ),
+                          ),
+                        );
+                      },
+                      childCount: filteredFlights.length,
+                    ),
+                  ),
+                ],
 
                 // Bottom padding for floating navigation bar
                 const SliverToBoxAdapter(
@@ -400,13 +450,19 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.fromCode,
-                    style: GoogleFonts.outfit(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
+                  Hero(
+                    tag: 'route_from_${widget.fromCode}',
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Text(
+                        widget.fromCode,
+                        style: GoogleFonts.outfit(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
                     ),
                   ),
                   Text(
@@ -456,13 +512,19 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    widget.toCode,
-                    style: GoogleFonts.outfit(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
+                  Hero(
+                    tag: 'route_to_${widget.toCode}',
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Text(
+                        widget.toCode,
+                        style: GoogleFonts.outfit(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
                     ),
                   ),
                   Text(
@@ -481,6 +543,133 @@ class _FlightBookingScreenState extends State<FlightBookingScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildScanningBanner() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: ShapeDecoration(
+          color: const Color(0xFF16151B),
+          shape: SmoothRectangleBorder(
+            borderRadius: SmoothBorderRadius(
+              cornerRadius: 12,
+              cornerSmoothing: 0.6,
+            ),
+            side: const BorderSide(color: Color(0xFF282732), width: 1),
+          ),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryRed),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Searching live airline inventory for Sep $selectedDay...',
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white70,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonTicketCard() {
+    return Container(
+      height: 180,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.all(18),
+      decoration: ShapeDecoration(
+        color: const Color(0xFF141318),
+        shape: SmoothRectangleBorder(
+          borderRadius: SmoothBorderRadius(
+            cornerRadius: 22,
+            cornerSmoothing: 0.6,
+          ),
+          side: const BorderSide(color: Color(0xFF24232C), width: 1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 120,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 60,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              Container(
+                width: 90,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              Container(
+                width: 60,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Container(
+            width: double.infinity,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

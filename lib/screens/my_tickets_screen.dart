@@ -295,16 +295,30 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => BoardingPassScreen(
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  BoardingPassScreen(
                 flight: flight,
                 selectedSeats: [flight.seat],
                 isBookingConfirmed: true,
               ),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                const curve = Curves.easeOutCubic;
+                final fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+                  CurvedAnimation(parent: animation, curve: curve),
+                );
+                return FadeTransition(opacity: fadeAnim, child: child);
+              },
+              transitionDuration: const Duration(milliseconds: 320),
             ),
           );
         },
-        child: Container(
+        child: Hero(
+          tag: 'boarding_pass_${flight.id}',
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
           decoration: ShapeDecoration(
             color: const Color(0xFF141318),
             shadows: [
@@ -591,6 +605,8 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
             ],
           ),
         ),
+      ),
+    ),
       ),
     );
   }

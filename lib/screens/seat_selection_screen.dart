@@ -180,10 +180,16 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Selected Flight Ticket Card (reused component)
-                        TicketCard(
-                          flight: widget.flight,
-                          unitText: '/pax',
+                        // Selected Flight Ticket Card (reused component with Hero transition)
+                        Hero(
+                          tag: 'flight_ticket_${widget.flight.id}',
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: TicketCard(
+                              flight: widget.flight,
+                              unitText: '/pax',
+                            ),
+                          ),
                         ),
 
                         // Seat Map Legend (Unavailable, Available, Selected)

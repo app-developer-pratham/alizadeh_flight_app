@@ -1,13 +1,14 @@
 import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../models/flight.dart';
 import '../screens/boarding_pass_screen.dart';
 import '../theme/app_theme.dart';
 import 'boarding_pass_card.dart';
 import 'bounce_tap.dart';
 
-class FlightDetailsSheet extends StatelessWidget {
+class FlightDetailsSheet extends StatefulWidget {
   final Flight flight;
   final String? customSeat;
   final int? customPrice;
@@ -23,22 +24,63 @@ class FlightDetailsSheet extends StatelessWidget {
     this.selectedSeats,
   });
 
+  @override
+  State<FlightDetailsSheet> createState() => _FlightDetailsSheetState();
+}
+
+class _FlightDetailsSheetState extends State<FlightDetailsSheet> {
+  bool _isBooking = false;
+
   String _formatPrice(int price) {
-    return price
-        .toString()
-        .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+  }
+
+  void _onBookPressed(List<String> seatsList, int totalPrice) async {
+    if (_isBooking) return;
+    setState(() {
+      _isBooking = true;
+    });
+    final nav = Navigator.of(context);
+    await Future.delayed(const Duration(milliseconds: 500));
+    nav.pop();
+    nav.push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            BoardingPassScreen(
+              flight: widget.flight,
+              selectedSeats: seatsList,
+              customPrice: totalPrice,
+              isBookingConfirmed: true,
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const curve = Curves.easeOutCubic;
+          final fadeAnim = Tween<double>(
+            begin: 0.0,
+            end: 1.0,
+          ).animate(CurvedAnimation(parent: animation, curve: curve));
+          return FadeTransition(opacity: fadeAnim, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 320),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     // Determine seats list
-    final List<String> seatsList = selectedSeats ??
-        (customSeat != null && customSeat!.contains(',')
-            ? customSeat!.split(',').map((s) => s.trim()).toList()
-            : [customSeat ?? flight.seat]);
+    final List<String> seatsList =
+        widget.selectedSeats ??
+        (widget.customSeat != null && widget.customSeat!.contains(',')
+            ? widget.customSeat!.split(',').map((s) => s.trim()).toList()
+            : [widget.customSeat ?? widget.flight.seat]);
 
-    final int totalPrice = customPrice ?? (flight.price * passengerCount);
-    final bool hasMultipleTickets = passengerCount > 1 || seatsList.length > 1;
+    final int totalPrice =
+        widget.customPrice ?? (widget.flight.price * widget.passengerCount);
+    final bool hasMultipleTickets =
+        widget.passengerCount > 1 || seatsList.length > 1;
 
     return Container(
       decoration: ShapeDecoration(
@@ -94,7 +136,9 @@ class FlightDetailsSheet extends StatelessWidget {
                       if (hasMultipleTickets)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: ShapeDecoration(
                             color: AppColors.primaryRed.withValues(alpha: 0.15),
                             shape: SmoothRectangleBorder(
@@ -147,7 +191,7 @@ class FlightDetailsSheet extends StatelessWidget {
                 children: [
                   // Full Boarding Pass Card
                   BoardingPassCard(
-                    flight: flight,
+                    flight: widget.flight,
                     seatNumber: seatsList.first,
                     allSeats: seatsList,
                     totalTickets: seatsList.length,
@@ -158,7 +202,7 @@ class FlightDetailsSheet extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => BoardingPassScreen(
-                            flight: flight,
+                            flight: widget.flight,
                             selectedSeats: seatsList,
                             customPrice: totalPrice,
                           ),
@@ -169,26 +213,13 @@ class FlightDetailsSheet extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // Confirm / Book Button (Overflow safe)
+                  // Confirm / Book Button (Overflow safe & Interactive Loading State)
                   BounceTap(
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BoardingPassScreen(
-                            flight: flight,
-                            selectedSeats: seatsList,
-                            customPrice: totalPrice,
-                            isBookingConfirmed: true,
-                          ),
-                        ),
-                      );
-                    },
+                    onTap: () => _onBookPressed(seatsList, totalPrice),
                     child: Container(
                       height: 56,
+                      width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      alignment: Alignment.center,
                       decoration: ShapeDecoration(
                         color: AppColors.primaryRed,
                         shadows: [
@@ -209,28 +240,60 @@ class FlightDetailsSheet extends StatelessWidget {
                           ),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.check_circle_outline_rounded,
-                              color: Colors.white, size: 20),
-                          const SizedBox(width: 10),
-                          Flexible(
-                            child: Text(
-                              hasMultipleTickets
-                                  ? 'Book ${seatsList.length} Tickets • \$${_formatPrice(totalPrice)}'
-                                  : 'Book Flight • \$${_formatPrice(totalPrice)}',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                      child: _isBooking
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.0,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    'Confirming Booking...',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.check_circle_outline_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    hasMultipleTickets
+                                        ? 'Book ${seatsList.length} Tickets • \$${_formatPrice(totalPrice)}'
+                                        : 'Book Flight • \$${_formatPrice(totalPrice)}',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ],

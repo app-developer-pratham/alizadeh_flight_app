@@ -33,6 +33,8 @@ class _BoardingPassScreenState extends State<BoardingPassScreen> {
   late final PageController _pageController;
   int _currentTicketIndex = 0;
   bool _isConfirmed = false;
+  bool _isSavingToWallet = false;
+  bool _savedToWallet = false;
 
   @override
   void initState() {
@@ -118,7 +120,20 @@ class _BoardingPassScreenState extends State<BoardingPassScreen> {
     );
   }
 
-  void _saveToAppleWallet() {
+  void _saveToAppleWallet() async {
+    if (_isSavingToWallet) return;
+    setState(() {
+      _isSavingToWallet = true;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 320));
+    if (!mounted) return;
+
+    setState(() {
+      _isSavingToWallet = false;
+      _savedToWallet = true;
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppColors.surfaceDark,
@@ -391,43 +406,45 @@ class _BoardingPassScreenState extends State<BoardingPassScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
                     child: Column(
                       children: [
-                        if (hasMultipleTickets) ...[
-                          // Multi-Ticket PageView Carousel
-                          SizedBox(
-                            height: 690,
-                            child: PageView.builder(
-                              controller: _pageController,
-                              onPageChanged: _onTicketSwiped,
-                              itemCount: _seats.length,
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 2),
-                                  child: BoardingPassCard(
+                        Hero(
+                          tag: 'boarding_pass_${_flight.id}',
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: hasMultipleTickets
+                                ? SizedBox(
+                                    height: 690,
+                                    child: PageView.builder(
+                                      controller: _pageController,
+                                      onPageChanged: _onTicketSwiped,
+                                      itemCount: _seats.length,
+                                      itemBuilder: (context, index) {
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 2),
+                                          child: BoardingPassCard(
+                                            flight: _flight,
+                                            seatNumber: _seats[index],
+                                            passengerName: _passengers[index],
+                                            ticketIndex: index,
+                                            totalTickets: _seats.length,
+                                            allSeats: _seats,
+                                            barcodeNumber:
+                                                '0942 8493 2198 0041 ${3800 + index}',
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : BoardingPassCard(
                                     flight: _flight,
-                                    seatNumber: _seats[index],
-                                    passengerName: _passengers[index],
-                                    ticketIndex: index,
-                                    totalTickets: _seats.length,
+                                    seatNumber: _seats.first,
+                                    passengerName: _passengers.first,
+                                    ticketIndex: 0,
+                                    totalTickets: 1,
                                     allSeats: _seats,
-                                    barcodeNumber:
-                                        '0942 8493 2198 0041 ${3800 + index}',
                                   ),
-                                );
-                              },
-                            ),
                           ),
-                        ] else ...[
-                          // Single Ticket Pass Card
-                          BoardingPassCard(
-                            flight: _flight,
-                            seatNumber: _seats.first,
-                            passengerName: _passengers.first,
-                            ticketIndex: 0,
-                            totalTickets: 1,
-                            allSeats: _seats,
-                          ),
-                        ],
+                        ),
 
                         const SizedBox(height: 18),
 
@@ -499,15 +516,17 @@ class _BoardingPassScreenState extends State<BoardingPassScreen> {
 
                         const SizedBox(height: 18),
 
-                        // Primary Action Button (Overflow safe for 1 to 10+ tickets!)
+                        // Primary Action Button (Overflow safe for 1 to 10+ tickets & Interactive Loading State)
                         BounceTap(
-                          onTap: _isConfirmed
-                              ? _saveToAppleWallet
-                              : _confirmBooking,
+                          onTap: _isSavingToWallet
+                              ? null
+                              : (_isConfirmed
+                                  ? _saveToAppleWallet
+                                  : _confirmBooking),
                           child: Container(
                             height: 56,
+                            width: double.infinity,
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            alignment: Alignment.center,
                             decoration: ShapeDecoration(
                               color: AppColors.primaryRed,
                               shadows: [
@@ -522,34 +541,48 @@ class _BoardingPassScreenState extends State<BoardingPassScreen> {
                                   cornerRadius: 18,
                                   cornerSmoothing: 0.6,
                                 ),
-                                side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.14),
-                                  width: 1.0,
-                                ),
                               ),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
-                                  _isConfirmed
-                                      ? Icons.wallet_rounded
-                                      : Icons.check_circle_outline_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
+                                if (_isSavingToWallet)
+                                  const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  )
+                                else
+                                  Icon(
+                                    _savedToWallet
+                                        ? Icons.check_circle_rounded
+                                        : (_isConfirmed
+                                            ? Icons.wallet_rounded
+                                            : Icons
+                                                .check_circle_outline_rounded),
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 const SizedBox(width: 10),
                                 Flexible(
                                   child: Text(
-                                    _isConfirmed
+                                    _savedToWallet
                                         ? (hasMultipleTickets
-                                            ? 'Save ${_seats.length} Passes to Apple Wallet'
-                                            : 'Save to Apple Wallet')
-                                        : (hasMultipleTickets
-                                            ? 'Book ${_seats.length} Tickets • \$${_formatCurrency(_totalPrice)}'
-                                            : 'Book Flight • \$${_formatCurrency(_totalPrice)}'),
+                                            ? '${_seats.length} Passes in Apple Wallet ✓'
+                                            : 'Pass in Apple Wallet ✓')
+                                        : (_isConfirmed
+                                            ? (hasMultipleTickets
+                                                ? 'Save ${_seats.length} Passes to Apple Wallet'
+                                                : 'Save to Apple Wallet')
+                                            : (hasMultipleTickets
+                                                ? 'Book ${_seats.length} Tickets • \$${_formatCurrency(_totalPrice)}'
+                                                : 'Book Flight • \$${_formatCurrency(_totalPrice)}')),
                                     style: GoogleFonts.outfit(
-                                      fontSize: 15.5,
+                                      fontSize: 15.0,
                                       fontWeight: FontWeight.w700,
                                       color: Colors.white,
                                       letterSpacing: -0.2,

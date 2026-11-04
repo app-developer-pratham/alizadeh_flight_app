@@ -30,6 +30,8 @@ class _HomeScreenState extends State<HomeScreen>
   DateTime _departureDate = DateTime(2024, 9, 21);
   DateTime _returnDate = DateTime(2024, 9, 28);
 
+  bool _isSearching = false;
+
   late final AnimationController _swapAnimController;
   late final Animation<double> _swapRotation;
 
@@ -90,7 +92,19 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _navigateToFlightBooking() {
+  void _navigateToFlightBooking() async {
+    if (_isSearching) return;
+    setState(() {
+      _isSearching = true;
+    });
+
+    // Realistic search simulation delay for authentic screen recordings
+    await Future.delayed(const Duration(milliseconds: 550));
+    if (!mounted) return;
+    setState(() {
+      _isSearching = false;
+    });
+
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -453,29 +467,50 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 1),
-                                Row(
-                                  children: [
-                                    Text(
-                                      _fromAirport.code,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                      ),
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 260),
+                                  transitionBuilder: (child, anim) =>
+                                      FadeTransition(
+                                    opacity: anim,
+                                    child: SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(0.0, 0.25),
+                                        end: Offset.zero,
+                                      ).animate(anim),
+                                      child: child,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        _fromAirport.city,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 13.5,
-                                          color: AppColors.textSecondary,
+                                  ),
+                                  child: Row(
+                                    key: ValueKey('from_${_fromAirport.code}'),
+                                    children: [
+                                      Hero(
+                                        tag: 'route_from_${_fromAirport.code}',
+                                        child: Material(
+                                          type: MaterialType.transparency,
+                                          child: Text(
+                                            _fromAirport.code,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _fromAirport.city,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 13.5,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -535,29 +570,50 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 1),
-                                Row(
-                                  children: [
-                                    Text(
-                                      _toAirport.code,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                      ),
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 260),
+                                  transitionBuilder: (child, anim) =>
+                                      FadeTransition(
+                                    opacity: anim,
+                                    child: SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(0.0, -0.25),
+                                        end: Offset.zero,
+                                      ).animate(anim),
+                                      child: child,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        _toAirport.city,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 13.5,
-                                          color: AppColors.textSecondary,
+                                  ),
+                                  child: Row(
+                                    key: ValueKey('to_${_toAirport.code}'),
+                                    children: [
+                                      Hero(
+                                        tag: 'route_to_${_toAirport.code}',
+                                        child: Material(
+                                          type: MaterialType.transparency,
+                                          child: Text(
+                                            _toAirport.code,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _toAirport.city,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 13.5,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -774,8 +830,9 @@ class _HomeScreenState extends State<HomeScreen>
 
           // Search Flights Primary Button (Tactile, human-designed, no neon glow)
           AppPrimaryButton(
-            text: 'Search Flights',
-            icon: Icons.flight_takeoff_rounded,
+            text: _isSearching ? 'Searching flights...' : 'Search Flights',
+            icon: _isSearching ? null : Icons.flight_takeoff_rounded,
+            isLoading: _isSearching,
             height: 52,
             onTap: _navigateToFlightBooking,
           ),
